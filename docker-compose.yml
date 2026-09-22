@@ -37,6 +37,7 @@ services:
 
   web-app:
     image: fleetrelay-web-app
+    container_name: fleetrelay-web-app
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
