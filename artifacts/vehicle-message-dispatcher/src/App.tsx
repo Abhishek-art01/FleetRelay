@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { AlertCircle, ArrowUpRight, Bell, Check, CheckCircle2, ChevronDown, ClipboardCheck, CloudUpload, FileSpreadsheet, Filter, Info, LayoutDashboard, Link2, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Pencil, RefreshCw, Search, Send, Settings2, ShieldCheck, Sparkles, Upload, Users, X, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, Bell, Check, CheckCircle2, ChevronDown, ClipboardCheck, CloudUpload, FileSpreadsheet, Filter, Info, LayoutDashboard, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Pencil, RefreshCw, Search, Send, Settings2, Sparkles, Upload, Users, X, XCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import NotFound from '@/pages/not-found';
@@ -48,9 +48,7 @@ function AppShell() {
   const [filter, setFilter] = useState<'all' | DeliveryStatus>('all');
   const [template, setTemplate] = useState(baseTemplate);
   const [fileName, setFileName] = useState('No file loaded');
-  const [setupOpen, setSetupOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [phoneNumberId, setPhoneNumberId] = useState(() => localStorage.getItem('whatsapp-phone-number-id') ?? '');
   const [mobileNav, setMobileNav] = useState(false);
   const [activity, setActivity] = useState('Import an Excel or CSV duty sheet to begin.');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -210,17 +208,11 @@ function AppShell() {
       setActivity('Select at least one ready message to send.');
       return;
     }
-    if (!phoneNumberId.trim()) {
-      setSetupOpen(true);
-      setActivity('Add your WhatsApp phone number ID before sending.');
-      return;
-    }
     setActivity(`Sending ${ready.length} ${ready.length === 1 ? 'message' : 'messages'} through WhatsApp…`);
     let sent = 0;
     for (const record of ready) {
       try {
         const result = await sendWhatsAppMessage({
-          phoneNumberId: phoneNumberId.trim(),
           to: record.mobile,
           message: fillMessage(record),
         });
@@ -257,7 +249,7 @@ function AppShell() {
           <nav className="space-y-1">
             <button data-testid="button-nav-dispatch" title="Duty dispatch" className={`flex w-full items-center gap-3 rounded-xl bg-sidebar-accent py-3 text-sm font-semibold text-sidebar-accent-foreground ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}`}><LayoutDashboard size={17} /> {!sidebarCollapsed && <>Duty dispatch <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 font-mono-app text-[10px] font-medium text-secondary-foreground">{counts.all}</span></>}</button>
             <button data-testid="button-nav-drivers" title="Driver directory" onClick={() => setActivity('Driver directory is available through today’s imported duty sheet.')} className={`flex w-full items-center gap-3 rounded-xl py-3 text-sm text-sidebar-foreground/65 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}`}><Users size={17} /> {!sidebarCollapsed && 'Driver directory'}</button>
-            <button data-testid="button-nav-settings" title="Connection settings" onClick={() => setSetupOpen(true)} className={`flex w-full items-center gap-3 rounded-xl py-3 text-sm text-sidebar-foreground/65 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}`}><Settings2 size={17} /> {!sidebarCollapsed && 'Connection settings'}</button>
+            <button data-testid="button-nav-settings" title="WhatsApp connection is configured on the server" onClick={() => setActivity('WhatsApp connection is configured securely on the server.')} className={`flex w-full items-center gap-3 rounded-xl py-3 text-sm text-sidebar-foreground/65 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}`}><Settings2 size={17} /> {!sidebarCollapsed && 'Connection status'}</button>
           </nav>
         </div>
       </aside>
@@ -328,9 +320,7 @@ function AppShell() {
         </div>
       </main>
 
-      <button data-testid="button-prepare-send" aria-label={phoneNumberId ? 'Send selected messages' : 'Open WhatsApp setup'} title={phoneNumberId ? 'Send selected messages' : 'Open WhatsApp setup'} onClick={prepareSend} className="fixed bottom-6 right-6 z-30 grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:-translate-y-0.5 hover:bg-primary/90"><Send size={18} /></button>
-
-      {setupOpen && <SetupModal phoneNumberId={phoneNumberId} onSave={(value) => { setPhoneNumberId(value); localStorage.setItem('whatsapp-phone-number-id', value); setSetupOpen(false); setActivity('WhatsApp phone number ID saved. Select ready drivers to send.'); }} onClose={() => setSetupOpen(false)} />}
+      <button data-testid="button-prepare-send" aria-label="Send selected messages" title="Send selected messages" onClick={prepareSend} className="fixed bottom-6 right-6 z-30 grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:-translate-y-0.5 hover:bg-primary/90"><Send size={18} /></button>
     </div>
   );
 }
@@ -376,11 +366,6 @@ function EmptySearch({ query, onClear }: { query: string; onClear: () => void })
 
 function EmptyWorkspace({ onUpload }: { onUpload: () => void }) {
   return <div data-testid="empty-workspace" className="flex min-h-[310px] flex-col items-center justify-center px-6 text-center"><div className="relative grid h-14 w-14 place-items-center rounded-2xl bg-[#fff0bc] text-primary"><FileSpreadsheet size={24} /><span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[#dff1ed] text-[#246b5e]"><CloudUpload size={12} /></span></div><h3 className="mt-5 font-display text-xl font-bold">Your duty sheet starts here</h3><p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">Upload the Excel or CSV export containing vehicle number, driver name, mobile number, and pending duty count.</p><button data-testid="button-empty-upload" onClick={onUpload} className="mt-5 inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-bold transition hover:bg-muted"><Upload size={14} /> Choose a file</button><p className="mt-4 font-mono-app text-[10px] text-muted-foreground">.xlsx · .xls · .csv</p></div>;
-}
-
-function SetupModal({ phoneNumberId, onSave, onClose }: { phoneNumberId: string; onSave: (value: string) => void; onClose: () => void }) {
-  const [draft, setDraft] = useState(phoneNumberId);
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/35 p-4 backdrop-blur-sm"><div role="dialog" aria-modal="true" data-testid="dialog-connection-setup" className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl"><div className="flex items-start justify-between"><div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#dff1ed] text-[#246b5e]"><Link2 size={21} /></div><button data-testid="button-close-setup" onClick={onClose} aria-label="Close setup" className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button></div><p className="mt-5 font-mono-app text-[10px] uppercase tracking-[.16em] text-muted-foreground">Connection settings</p><h2 className="mt-2 font-display text-2xl font-bold tracking-tight">Connect WhatsApp Business</h2><p className="mt-3 text-sm leading-6 text-muted-foreground">Your WhatsApp account is connected securely. Add the phone number ID from Meta Business Manager so Relaydesk knows which business number should send these messages.</p><label className="mt-5 block text-xs font-bold text-foreground" htmlFor="whatsapp-phone-number-id">WhatsApp phone number ID</label><input id="whatsapp-phone-number-id" data-testid="input-whatsapp-phone-number-id" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Example: 123456789012345" className="mt-2 h-11 w-full rounded-xl border border-border bg-[#fbf8f1] px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15" /><p className="mt-2 text-[11px] leading-5 text-muted-foreground">Find it in Meta Business Manager → WhatsApp → API setup. This is not the public phone number.</p><div className="mt-5 flex items-start gap-2 rounded-xl border border-border bg-[#fff9e7] p-3 text-[11px] leading-5 text-muted-foreground"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-[#7e6215]" /> Messages are sent through the connected WhatsApp Business service. The access token is never stored in this browser.</div><div className="mt-5 flex gap-2"><button data-testid="button-save-setup" disabled={!draft.trim()} onClick={() => onSave(draft.trim())} className="flex-1 rounded-xl bg-primary py-3 text-xs font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">Save and enable sending</button><button data-testid="button-close-setup-done" onClick={onClose} className="rounded-xl border border-border px-4 py-3 text-xs font-bold text-muted-foreground">Cancel</button></div></div></div>;
 }
 
 function Router() {

@@ -19,6 +19,10 @@ services:
       SUPABASE_PUBLISHABLE_KEY:
       SUPABASE_SECRET_KEY:
       SUPABASE_JWKS_URL:
+      WHATSAPP_PHONE_NUMBER_ID:
+      WHATSAPP_ACCESS_TOKEN:
+      WHATSAPP_APP_SECRET:
+      WHATSAPP_WEBHOOK_VERIFY_TOKEN:
     restart: unless-stopped
 
   mockup-sandbox:

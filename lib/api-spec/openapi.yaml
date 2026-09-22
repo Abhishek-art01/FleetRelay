@@ -132,9 +132,6 @@ components:
     WhatsAppMessageInput:
       type: object
       properties:
-        phoneNumberId:
-          type: string
-          minLength: 1
         to:
           type: string
           minLength: 7
@@ -142,7 +139,6 @@ components:
           type: string
           minLength: 1
       required:
-        - phoneNumberId
         - to
         - message
     WhatsAppMessageResult:
@@ -195,4 +191,3 @@ components:
           type: string
       required:
         - error
-

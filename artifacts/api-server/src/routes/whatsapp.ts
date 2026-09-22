@@ -1,6 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Router, type IRouter, type Request } from "express";
-import { ReplitConnectors } from "@replit/connectors-sdk";
 import { SendWhatsAppMessageBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -39,11 +38,17 @@ function verifyWebhookSignature(req: WebhookRequest) {
 router.post("/whatsapp/send", async (req, res) => {
   const parsed = SendWhatsAppMessageBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Phone number ID, recipient, and message are required." });
+    res.status(400).json({ error: "Recipient and message are required." });
     return;
   }
 
-  const { phoneNumberId, to, message } = parsed.data;
+  const phoneNumberId = process.env["WHATSAPP_PHONE_NUMBER_ID"];
+  const accessToken = process.env["WHATSAPP_ACCESS_TOKEN"];
+  const { to, message } = parsed.data;
+  if (!phoneNumberId || !accessToken) {
+    res.status(503).json({ error: "WhatsApp credentials are not configured on the server." });
+    return;
+  }
   const recipient = to.replace(/[^\d+]/g, "");
   if (!/^\+?\d{7,15}$/.test(recipient)) {
     res.status(400).json({ error: "Enter a mobile number with country code, for example +919876544102." });
@@ -51,13 +56,14 @@ router.post("/whatsapp/send", async (req, res) => {
   }
 
   try {
-    const connectors = new ReplitConnectors();
-    const response = await connectors.proxy(
-      "whatsapp-business",
-      `/${graphVersion}/${encodeURIComponent(phoneNumberId)}/messages`,
+    const response = await fetch(
+      `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(phoneNumberId)}/messages`,
       {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          "content-type": "application/json",
+        },
         body: JSON.stringify({
           messaging_product: "whatsapp",
           recipient_type: "individual",

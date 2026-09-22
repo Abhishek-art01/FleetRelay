@@ -28,7 +28,6 @@ export const sendWhatsAppMessageBodyToMin = 7;
 
 
 export const SendWhatsAppMessageBody = zod.object({
-  "phoneNumberId": zod.string().min(1),
   "to": zod.string().min(sendWhatsAppMessageBodyToMin),
   "message": zod.string().min(1)
 })
@@ -75,5 +74,4 @@ export const VerifyWhatsAppWebhookResponse = zod.string()
  * @summary Receive WhatsApp delivery events from Meta
  */
 export const ReceiveWhatsAppWebhookResponse = zod.unknown()
-
 

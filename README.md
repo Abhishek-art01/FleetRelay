@@ -44,3 +44,14 @@ must include these columns:
 Column names are matched case-insensitively and spaces/punctuation are ignored.
 Rows missing any required value are rejected so only complete rows can be sent
 through WhatsApp.
+
+WhatsApp server credentials are loaded only by the API from the encrypted
+`.env` file:
+
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WHATSAPP_ACCESS_TOKEN`
+- `WHATSAPP_APP_SECRET`
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+
+Never place the access token in frontend code, Excel files, or GitHub. Generate
+a new Meta access token if one has been exposed.

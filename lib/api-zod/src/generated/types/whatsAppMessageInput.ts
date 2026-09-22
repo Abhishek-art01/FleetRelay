@@ -7,8 +7,6 @@
  */
 
 export interface WhatsAppMessageInput {
-  /** @minLength 1 */
-  phoneNumberId: string;
   /** @minLength 7 */
   to: string;
   /** @minLength 1 */
