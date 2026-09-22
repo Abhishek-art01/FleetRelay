@@ -35,6 +35,10 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/", (_req, res) => {
+  res.redirect(307, "/api/healthz");
+});
+
 app.use("/api", router);
 
 export default app;
