@@ -3,10 +3,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { AlertCircle, ArrowUpRight, Bell, Check, CheckCircle2, ChevronDown, ClipboardCheck, CloudUpload, FileSpreadsheet, Filter, Info, LayoutDashboard, Link2, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Pencil, RefreshCw, Search, Send, Settings2, ShieldCheck, Sparkles, Upload, Users, X, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, Bell, Check, CheckCircle2, ChevronDown, ClipboardCheck, CloudUpload, FileSpreadsheet, Filter, Info, LayoutDashboard, Link2, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Pencil, RefreshCw, Search, Send, Settings2, ShieldCheck, Sparkles, Upload, Users, X, XCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import NotFound from '@/pages/not-found';
+import { AuthGate } from '@/components/auth-gate';
+import { supabase } from '@/lib/supabase';
 import { getWhatsAppMessageStatuses, sendWhatsAppMessage } from '@workspace/api-client-react';
 
 const queryClient = new QueryClient();
@@ -260,7 +262,7 @@ function AppShell() {
           <div className="flex items-center gap-3">
             <div className="hidden items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground md:flex"><span className="h-1.5 w-1.5 rounded-full bg-[#3d9b7b]" /> Today, 08:42 IST</div>
             <button data-testid="button-notifications" aria-label="Notifications" onClick={() => setActivity('No new operational alerts.')} className="rounded-xl p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"><Bell size={18} /></button>
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">AC</div>
+            <button type="button" data-testid="button-sign-out" aria-label="Sign out" title="Sign out" onClick={() => void supabase.auth.signOut()} className="grid h-9 w-9 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground transition hover:bg-secondary"><LogOut size={16} /></button>
           </div>
         </header>
 
@@ -378,7 +380,7 @@ function Router() {
 }
 
 function RootApp() {
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
+  return <AuthGate><QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider></AuthGate>;
 }
 
 export default RootApp;
