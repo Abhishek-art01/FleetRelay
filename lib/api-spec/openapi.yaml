@@ -1,0 +1,198 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: whatsapp
+    description: WhatsApp messaging operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /whatsapp/send:
+    post:
+      operationId: sendWhatsAppMessage
+      tags: [whatsapp]
+      summary: Send a WhatsApp text message
+      description: Sends one text message through the connected WhatsApp Business account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WhatsAppMessageInput"
+      responses:
+        "200":
+          description: Message accepted by WhatsApp
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppMessageResult"
+        "400":
+          description: Invalid message details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: WhatsApp rejected the message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /whatsapp/status:
+    get:
+      operationId: getWhatsAppMessageStatuses
+      tags: [whatsapp]
+      summary: Get WhatsApp delivery statuses
+      description: Returns the latest webhook status for the requested WhatsApp message IDs.
+      parameters:
+        - name: messageIds
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Comma-separated WhatsApp message IDs
+      responses:
+        "200":
+          description: Latest known statuses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppStatusResponse"
+  /whatsapp/webhook:
+    get:
+      operationId: verifyWhatsAppWebhook
+      tags: [whatsapp]
+      summary: Verify the Meta WhatsApp webhook
+      parameters:
+        - name: hub.mode
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: hub.verify_token
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: hub.challenge
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Challenge accepted
+          content:
+            text/plain:
+              schema:
+                type: string
+        "403":
+          description: Verification failed
+        "503":
+          description: Webhook verification is not configured
+    post:
+      operationId: receiveWhatsAppWebhook
+      tags: [whatsapp]
+      summary: Receive WhatsApp delivery events from Meta
+      responses:
+        "200":
+          description: Event accepted
+        "403":
+          description: Invalid webhook signature
+        "503":
+          description: Webhook signing secret is not configured
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    WhatsAppMessageInput:
+      type: object
+      properties:
+        phoneNumberId:
+          type: string
+          minLength: 1
+        to:
+          type: string
+          minLength: 7
+        message:
+          type: string
+          minLength: 1
+      required:
+        - phoneNumberId
+        - to
+        - message
+    WhatsAppMessageResult:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+        messageId:
+          type: ["string", "null"]
+        recipient:
+          type: string
+        detail:
+          type: ["string", "null"]
+      required:
+        - accepted
+        - messageId
+        - recipient
+        - detail
+    WhatsAppStatus:
+      type: object
+      properties:
+        messageId:
+          type: string
+        status:
+          type: string
+          enum: [accepted, sent, delivered, read, failed]
+        detail:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - messageId
+        - status
+        - detail
+        - updatedAt
+    WhatsAppStatusResponse:
+      type: object
+      properties:
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/WhatsAppStatus"
+      required:
+        - statuses
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+

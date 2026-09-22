@@ -1,0 +1,1 @@
+- [WhatsApp webhook verification](whatsapp-webhook.md) — Meta callbacks need raw request bytes plus separate verify-token and app-secret configuration.
