@@ -35,7 +35,8 @@ services:
       - "${MOCKUP_HOST_PORT:-5173}:80"
     restart: unless-stopped
 
-  vehicle-message-dispatcher:
+  web-app:
+    image: fleetrelay-web-app
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile

@@ -6,7 +6,7 @@ The project runs as three containers:
 
 - API: <http://localhost:3000>
 - Mockup Sandbox: <http://localhost:5173>
-- Vehicle Message Dispatcher: <http://localhost:5174>
+- Web App: <http://localhost:5174>
 
 The encrypted `.env` key is loaded from Bitwarden at runtime. No `.env.keys`
 file is required.
