@@ -23,3 +23,10 @@ Stop the stack with `Ctrl+C`. To remove the containers and network:
 ```bash
 docker compose down
 ```
+
+For local Vite development with Supabase variables loaded from Bitwarden:
+
+```bash
+export BW_SESSION="$(bw unlock --raw)"
+./scripts/run-web-dev.sh
+```

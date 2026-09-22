@@ -28,6 +28,7 @@ if (!basePath) {
 }
 
 export default defineConfig({
+  envDir: path.resolve(import.meta.dirname, '../..'),
   base: basePath,
   plugins: [
     react(),
