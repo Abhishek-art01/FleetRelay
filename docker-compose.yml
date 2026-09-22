@@ -1,0 +1,52 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    ports:
+      - "${API_HOST_PORT:-3000}:3000"
+    environment:
+      PORT: "3000"
+      DATABASE_URL:
+      PGHOST:
+      PGPORT:
+      PGDATABASE:
+      PGUSER:
+      PGPASSWORD:
+      SUPABASE_URL:
+      SUPABASE_PUBLISHABLE_KEY:
+      SUPABASE_SECRET_KEY:
+      SUPABASE_JWKS_URL:
+    restart: unless-stopped
+
+  mockup-sandbox:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        APP_DIR: artifacts/mockup-sandbox
+        APP_DIR_NAME: mockup-sandbox
+        APP_NAME: "@workspace/mockup-sandbox"
+        PORT: "5173"
+        BASE_PATH: "/"
+        VITE_SUPABASE_URL: ${SUPABASE_URL:-}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+    ports:
+      - "${MOCKUP_HOST_PORT:-5173}:80"
+    restart: unless-stopped
+
+  vehicle-message-dispatcher:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        APP_DIR: artifacts/vehicle-message-dispatcher
+        APP_DIR_NAME: vehicle-message-dispatcher
+        APP_NAME: "@workspace/vehicle-message-dispatcher"
+        PORT: "5174"
+        BASE_PATH: "/"
+        VITE_SUPABASE_URL: ${SUPABASE_URL:-}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+    ports:
+      - "${DISPATCHER_HOST_PORT:-5174}:80"
+    restart: unless-stopped

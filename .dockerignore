@@ -1,0 +1,16 @@
+.git
+.github
+.agents
+.cache
+.local
+.env
+.env.*
+.env.keys
+node_modules
+**/node_modules
+**/dist
+**/.vite
+**/*.tsbuildinfo
+coverage
+tmp
+out-tsc
