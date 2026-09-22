@@ -25,15 +25,6 @@ type DriverRecord = {
   whatsappMessageId?: string;
 };
 
-const sampleRecords: DriverRecord[] = [
-  { id: 'VH-1042', vehicle: 'VH-1042', duties: 3, message: 'Hi {{DriverName}}, you have 3 pending duties to review today. Please confirm your availability with the desk.', mobile: '+91 98765 44102', driver: 'Rakesh Kumar', status: 'ready' },
-  { id: 'VH-1188', vehicle: 'VH-1188', duties: 1, message: 'Hi {{DriverName}}, one duty is waiting for your confirmation today. Please check in with the desk.', mobile: '+91 98204 11880', driver: 'Meena Shah', status: 'ready' },
-  { id: 'VH-0921', vehicle: 'VH-0921', duties: 5, message: 'Hi {{DriverName}}, you have 5 pending duties to review today. Please confirm your availability with the desk.', mobile: '', driver: 'Arjun Patel', status: 'blocked' },
-  { id: 'VH-0764', vehicle: 'VH-0764', duties: 2, message: 'Hi {{DriverName}}, you have 2 pending duties to review today. Please confirm your availability with the desk.', mobile: '+91 99102 77640', driver: 'Sanjay Rao', status: 'ready' },
-  { id: 'VH-1310', vehicle: 'VH-1310', duties: 4, message: '', mobile: '+91 98011 23104', driver: 'Nisha Verma', status: 'pending' },
-  { id: 'VH-1107', vehicle: 'VH-1107', duties: 1, message: 'Hi {{DriverName}}, one duty is waiting for your confirmation today. Please check in with the desk.', mobile: '+91 98921 81107', driver: 'Dev Malhotra', status: 'ready' },
-];
-
 const baseTemplate = 'Hi {{DriverName}}, you have {{Pending Duty Count}} pending duties to review today. Please confirm your availability with the desk.';
 
 function statusFor(record: Omit<DriverRecord, 'status'>): DeliveryStatus {
@@ -51,17 +42,17 @@ function formatNumber(value: number) {
 }
 
 function AppShell() {
-  const [records, setRecords] = useState<DriverRecord[]>(sampleRecords);
-  const [selected, setSelected] = useState<string[]>(sampleRecords.map((record) => record.id));
+  const [records, setRecords] = useState<DriverRecord[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | DeliveryStatus>('all');
   const [template, setTemplate] = useState(baseTemplate);
-  const [fileName, setFileName] = useState('sample-duty-sheet.xlsx');
+  const [fileName, setFileName] = useState('No file loaded');
   const [setupOpen, setSetupOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [phoneNumberId, setPhoneNumberId] = useState(() => localStorage.getItem('whatsapp-phone-number-id') ?? '');
   const [mobileNav, setMobileNav] = useState(false);
-  const [activity, setActivity] = useState('Sample duty sheet loaded. Review the queue before preparing a send.');
+  const [activity, setActivity] = useState('Import an Excel or CSV duty sheet to begin.');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredRecords = useMemo(() => records.filter((record) => {
@@ -152,23 +143,49 @@ function AppShell() {
       const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+      if (!rows.length) throw new Error('The file contains no data rows.');
+      const headers = Object.keys(rows[0]).map(normalizeKey);
+      const requiredColumns = [
+        { label: 'vehicle number', aliases: ['vehiclenumber', 'vehicle', 'vehicleno'] },
+        { label: 'driver name', aliases: ['drivername', 'driver', 'name'] },
+        { label: 'mobile number', aliases: ['mobileno', 'mobilenumber', 'mobile', 'phone'] },
+        { label: 'pending duty count', aliases: ['pendingdutycount', 'pendingduty', 'pendingduties', 'duties'] },
+      ];
+      const missingColumns = requiredColumns
+        .filter(({ aliases }) => !headers.some((header) => aliases.includes(header)))
+        .map(({ label }) => label);
+      if (missingColumns.length) {
+        throw new Error(`Missing required columns: ${missingColumns.join(', ')}.`);
+      }
+
       const imported = rows.map((row, index) => {
         const values = Object.entries(row);
         const get = (names: string[]) => values.find(([key]) => names.includes(normalizeKey(key)))?.[1] ?? '';
-        const vehicle = String(get(['vehiclenumber', 'vehicle', 'vehicleno']) || `Row ${index + 2}`);
-        const driver = String(get(['drivername', 'driver', 'name']));
-        const duties = Number(get(['pendingdutycount', 'pendingduties', 'duties'])) || 0;
-        const message = String(get(['massage', 'message', 'messagetemplate']));
-        const mobile = String(get(['mobileno', 'mobilenumber', 'mobile', 'phone']));
+        const vehicle = String(get(['vehiclenumber', 'vehicle', 'vehicleno'])).trim();
+        const driver = String(get(['drivername', 'driver', 'name'])).trim();
+        const rawDuties = get(['pendingdutycount', 'pendingduty', 'pendingduties', 'duties']);
+        const duties = Number(rawDuties);
+        const mobile = String(get(['mobileno', 'mobilenumber', 'mobile', 'phone'])).trim();
+        const rowErrors: string[] = [];
+        if (!vehicle) rowErrors.push('vehicle number');
+        if (!driver) rowErrors.push('driver name');
+        if (!mobile) rowErrors.push('mobile number');
+        if (!String(rawDuties).trim() || !Number.isFinite(duties) || duties < 0) rowErrors.push('pending duty count');
+        if (rowErrors.length) {
+          throw new Error(`Row ${index + 2} is missing or has an invalid ${rowErrors.join(', ')}.`);
+        }
+        const message = fillMessage({ id: '', vehicle, driver, duties, mobile, message: '', status: 'pending' });
         const draft = { id: `${vehicle}-${index}`, vehicle, driver, duties, message, mobile };
         return { ...draft, status: statusFor(draft) };
-      }).filter((record) => record.driver || record.vehicle);
-      if (!imported.length) throw new Error('No recognizable rows');
+      });
       setRecords(imported);
       setSelected(imported.map((record) => record.id));
       setActivity(`${imported.length} rows imported from ${file.name}.`);
-    } catch {
-      setActivity('This file could not be read. Check the column names and try again.');
+    } catch (error) {
+      setRecords([]);
+      setSelected([]);
+      setFileName('No file loaded');
+      setActivity(error instanceof Error ? error.message : 'This file could not be read. Check the required columns and try again.');
     } finally {
       event.target.value = '';
     }
@@ -220,13 +237,6 @@ function AppShell() {
     setActivity(`${sent} of ${ready.length} ${ready.length === 1 ? 'message was' : 'messages were'} accepted by WhatsApp. Delivery is asynchronous.`);
   }
 
-  function loadSampleData() {
-    setRecords(sampleRecords);
-    setSelected(sampleRecords.map((record) => record.id));
-    setFileName('sample-duty-sheet.xlsx');
-    setActivity('Sample duty sheet loaded. Review the queue before preparing a send.');
-  }
-
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <aside className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-sidebar py-6 text-sidebar-foreground transition-transform duration-200 lg:translate-x-0 lg:transition-none ${sidebarCollapsed ? 'w-[76px] px-3' : 'w-[252px] px-5'} ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -273,7 +283,6 @@ function AppShell() {
               <h1 className="font-display text-4xl font-bold tracking-[-.045em] text-primary sm:text-5xl">Duty dispatch</h1>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <button data-testid="button-load-sample" onClick={loadSampleData} className="hidden items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-xs font-bold text-foreground transition hover:bg-muted sm:inline-flex"><FileSpreadsheet size={15} /> Load sample</button>
               <button data-testid="button-upload-sheet" onClick={() => fileInputRef.current?.click()} className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:bg-primary/90"><Upload size={16} /> Import duty sheet <ArrowUpRight size={15} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></button>
             </div>
             <input ref={fileInputRef} data-testid="input-duty-sheet" onChange={handleUpload} className="hidden" type="file" accept=".xlsx,.xls,.csv" />
@@ -298,9 +307,9 @@ function AppShell() {
               <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
                 <div className="flex items-center justify-between border-b border-border bg-[#f8f4eb] px-4 py-3 text-xs">
                   <label className="flex items-center gap-3 font-semibold"><input data-testid="checkbox-select-visible" type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} className="h-4 w-4 accent-[#18363a]" /> Select visible <span className="font-normal text-muted-foreground">({selected.length} total)</span></label>
-                  <div className="flex items-center gap-3"><span data-testid="text-file-name" className="hidden items-center gap-1.5 font-mono-app text-[10px] text-muted-foreground sm:flex"><FileSpreadsheet size={14} /> {fileName}</span>{records.length > 0 && <button data-testid="button-clear-sheet" onClick={() => { setRecords([]); setSelected([]); setFileName('No file loaded'); setActivity('Queue cleared. Load a sample sheet or import today’s file to begin.'); }} className="text-[10px] font-bold text-muted-foreground underline decoration-border underline-offset-4 hover:text-destructive">Clear sheet</button>}</div>
+                  <div className="flex items-center gap-3"><span data-testid="text-file-name" className="hidden items-center gap-1.5 font-mono-app text-[10px] text-muted-foreground sm:flex"><FileSpreadsheet size={14} /> {fileName}</span>{records.length > 0 && <button data-testid="button-clear-sheet" onClick={() => { setRecords([]); setSelected([]); setFileName('No file loaded'); setActivity('Queue cleared. Import a duty sheet to begin.'); }} className="text-[10px] font-bold text-muted-foreground underline decoration-border underline-offset-4 hover:text-destructive">Clear sheet</button>}</div>
                 </div>
-                {records.length === 0 ? <EmptyWorkspace onLoad={loadSampleData} onUpload={() => fileInputRef.current?.click()} /> : filteredRecords.length ? <div className="divide-y divide-border/70">
+                {records.length === 0 ? <EmptyWorkspace onUpload={() => fileInputRef.current?.click()} /> : filteredRecords.length ? <div className="divide-y divide-border/70">
                   {filteredRecords.map((record, index) => <RecordRow key={record.id} record={record} selected={selected.includes(record.id)} index={index} onToggle={() => toggleSelected(record.id)} onUpdate={updateRecord} />)}
                 </div> : <EmptySearch query={query} onClear={() => { setQuery(''); setFilter('all'); }} />}
               </div>
@@ -365,8 +374,8 @@ function EmptySearch({ query, onClear }: { query: string; onClear: () => void })
   return <div className="flex min-h-[255px] flex-col items-center justify-center px-6 text-center"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-muted text-muted-foreground"><Search size={20} /></div><h3 className="mt-4 font-display text-lg font-bold">No drivers match this view</h3><p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">{query ? `Nothing matched “${query}”. Try another name or vehicle number.` : 'There are no records in this status yet.'}</p><button data-testid="button-clear-filters" onClick={onClear} className="mt-4 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground">Clear filters</button></div>;
 }
 
-function EmptyWorkspace({ onLoad, onUpload }: { onLoad: () => void; onUpload: () => void }) {
-  return <div data-testid="empty-workspace" className="flex min-h-[310px] flex-col items-center justify-center px-6 text-center"><div className="relative grid h-14 w-14 place-items-center rounded-2xl bg-[#fff0bc] text-primary"><FileSpreadsheet size={24} /><span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[#dff1ed] text-[#246b5e]"><CloudUpload size={12} /></span></div><h3 className="mt-5 font-display text-xl font-bold">Your duty sheet starts here</h3><p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">Bring in the daily Excel or CSV export, or take a quick turn with sample data before your first live sheet.</p><div className="mt-5 flex flex-wrap justify-center gap-2"><button data-testid="button-empty-load-sample" onClick={onLoad} className="inline-flex items-center gap-2 rounded-xl bg-secondary px-3.5 py-2.5 text-xs font-bold text-secondary-foreground transition hover:-translate-y-0.5"><FileSpreadsheet size={14} /> Use sample data</button><button data-testid="button-empty-upload" onClick={onUpload} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-bold transition hover:bg-muted"><Upload size={14} /> Choose a file</button></div><p className="mt-4 font-mono-app text-[10px] text-muted-foreground">.xlsx · .xls · .csv</p></div>;
+function EmptyWorkspace({ onUpload }: { onUpload: () => void }) {
+  return <div data-testid="empty-workspace" className="flex min-h-[310px] flex-col items-center justify-center px-6 text-center"><div className="relative grid h-14 w-14 place-items-center rounded-2xl bg-[#fff0bc] text-primary"><FileSpreadsheet size={24} /><span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[#dff1ed] text-[#246b5e]"><CloudUpload size={12} /></span></div><h3 className="mt-5 font-display text-xl font-bold">Your duty sheet starts here</h3><p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">Upload the Excel or CSV export containing vehicle number, driver name, mobile number, and pending duty count.</p><button data-testid="button-empty-upload" onClick={onUpload} className="mt-5 inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-bold transition hover:bg-muted"><Upload size={14} /> Choose a file</button><p className="mt-4 font-mono-app text-[10px] text-muted-foreground">.xlsx · .xls · .csv</p></div>;
 }
 
 function SetupModal({ phoneNumberId, onSave, onClose }: { phoneNumberId: string; onSave: (value: string) => void; onClose: () => void }) {

@@ -30,3 +30,17 @@ For local Vite development with Supabase variables loaded from Bitwarden:
 export BW_SESSION="$(bw unlock --raw)"
 ./scripts/run-web-dev.sh
 ```
+
+## Duty sheet format
+
+Import an `.xlsx`, `.xls`, or `.csv` file with one row per driver. The sheet
+must include these columns:
+
+- `Vehicle Number`
+- `Driver Name`
+- `Mobile Number`
+- `Pending Duty Count`
+
+Column names are matched case-insensitively and spaces/punctuation are ignored.
+Rows missing any required value are rejected so only complete rows can be sent
+through WhatsApp.
