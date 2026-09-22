@@ -1,5 +1,7 @@
 services:
   api:
+    image: fleetrelay-api
+    container_name: fleetrelay-api
     build:
       context: .
       dockerfile: docker/api.Dockerfile
@@ -20,6 +22,8 @@ services:
     restart: unless-stopped
 
   mockup-sandbox:
+    image: fleetrelay-mockup
+    container_name: fleetrelay-mockup
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
@@ -36,8 +40,8 @@ services:
     restart: unless-stopped
 
   web-app:
-    image: fleetrelay-web-app
-    container_name: fleetrelay-web-app
+    image: fleetrelay-web
+    container_name: fleetrelay-web
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
