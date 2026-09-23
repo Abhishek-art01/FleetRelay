@@ -24,6 +24,7 @@ if ! command -v dotenvx >/dev/null 2>&1; then
   exit 1
 fi
 
+
 local_value() {
   dotenvx get "$1" -f .env.local --no-armor --no-native --no-1password --no-bitwarden
 }
