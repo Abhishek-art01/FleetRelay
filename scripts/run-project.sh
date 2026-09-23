@@ -24,15 +24,37 @@ if ! command -v dotenvx >/dev/null 2>&1; then
   exit 1
 fi
 
+local_value() {
+  dotenvx get "$1" -f .env.local --no-armor --no-native --no-1password --no-bitwarden
+}
+
+if [[ -f .env.local ]]; then
+  : "${BW_CLIENTID:=$(local_value BW_CLIENTID)}"
+  : "${BW_CLIENTSECRET:=$(local_value BW_CLIENTSECRET)}"
+  : "${BW_MASTER_PASSWORD:=$(local_value BW_MASTER_PASSWORD)}"
+  export BW_CLIENTID BW_CLIENTSECRET BW_MASTER_PASSWORD
+fi
+
 case "${1:-}" in
   down|stop|logs|ps)
     exec docker compose "$@"
     ;;
 esac
 
-if [[ "$(bw status | jq -r '.status')" == "locked" ]]; then
-  echo "Unlock Bitwarden first: export BW_SESSION=\$(bw unlock --raw)" >&2
-  exit 1
+bitwarden_status="$(bw status | jq -r '.status')"
+
+if [[ "$bitwarden_status" == "unauthenticated" && -n "${BW_CLIENTID:-}" && -n "${BW_CLIENTSECRET:-}" ]]; then
+  bw login --apikey >/dev/null
+  bitwarden_status="locked"
+fi
+
+if [[ "$bitwarden_status" != "unlocked" ]]; then
+  if [[ -z "${BW_MASTER_PASSWORD:-}" ]]; then
+    echo "Bitwarden is locked and BW_MASTER_PASSWORD is not configured in .env.local." >&2
+    exit 1
+  fi
+  export BW_SESSION
+  BW_SESSION="$(bw unlock --passwordenv BW_MASTER_PASSWORD --raw)"
 fi
 
 export DOTENV_PRIVATE_KEY
@@ -60,4 +82,5 @@ do
   export "$variable=$value"
 done
 
-exec docker compose up --build "$@"
+docker compose build --no-cache
+exec docker compose up "$@"

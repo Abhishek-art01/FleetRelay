@@ -5,6 +5,7 @@ ARG APP_DIR_NAME
 ARG APP_NAME
 ARG PORT
 ARG BASE_PATH=/
+ARG VITE_API_URL
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 
@@ -28,8 +29,11 @@ COPY lib/api-zod ./lib/api-zod
 ENV NODE_ENV=production
 ENV PORT=${PORT}
 ENV BASE_PATH=${BASE_PATH}
+ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
 ENV VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+
+RUN node -e 'for (const [name, value] of Object.entries({ VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY: process.env.VITE_SUPABASE_PUBLISHABLE_KEY })) { if (!value || value.startsWith("encrypted:")) throw new Error(`${name} must be decrypted before the frontend build`); }'
 
 RUN pnpm --filter "${APP_NAME}" build
 

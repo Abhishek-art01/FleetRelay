@@ -34,8 +34,6 @@ services:
   mockup-sandbox:
     image: fleetrelay-mockup
     container_name: fleetrelay-mockup
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
@@ -45,8 +43,8 @@ services:
         APP_NAME: "@workspace/mockup-sandbox"
         PORT: "5173"
         BASE_PATH: "/"
-        VITE_SUPABASE_URL: ${SUPABASE_URL:-}
-        VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-}
     ports:
       - "${MOCKUP_HOST_PORT:-5173}:80"
     restart: unless-stopped
@@ -54,8 +52,6 @@ services:
   web-app:
     image: fleetrelay-web
     container_name: fleetrelay-web
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
@@ -65,8 +61,9 @@ services:
         APP_NAME: "@workspace/message-dispatcher"
         PORT: "5174"
         BASE_PATH: "/"
-        VITE_SUPABASE_URL: ${SUPABASE_URL:-}
-        VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+        VITE_API_URL: ${API_PUBLIC_URL:-http://127.0.0.1:3000}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-}
     ports:
       - "${DISPATCHER_HOST_PORT:-5174}:80"
     restart: unless-stopped
