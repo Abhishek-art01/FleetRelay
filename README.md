@@ -1,5 +1,47 @@
 # FleetRelay
 
+## Deployment
+
+The recommended free deployment separates the public frontend from the API:
+
+- **Frontend:** Cloudflare Pages, built from `artifacts/message-dispatcher`
+- **API:** Render Web Service, configured by `render.yaml`
+- **Database and authentication:** Supabase
+- **WhatsApp webhook:** the public Render API URL at
+  `/api/whatsapp/webhook`
+
+### Render API
+
+Create a Render Blueprint from this repository. The Blueprint creates
+`fleetrelay-api` from `docker/api.Dockerfile` and uses `/api/healthz` for
+health checks. Add the values marked `sync: false` in the Render dashboard;
+never commit them to the repository.
+
+### Cloudflare Pages frontend
+
+Use these build settings:
+
+```text
+Root directory: /
+Build command: pnpm install --frozen-lockfile && pnpm --filter @workspace/message-dispatcher build
+Build output directory: artifacts/message-dispatcher/dist
+```
+
+Set these Pages environment variables for the production environment:
+
+```text
+VITE_API_URL=https://<your-render-api>.onrender.com
+VITE_SUPABASE_URL=https://<your-project>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<your-supabase-publishable-key>
+```
+
+After deployment, set the Supabase Auth site URL and redirect URL to the
+Cloudflare Pages HTTPS URL. Configure the Meta WhatsApp webhook as:
+
+```text
+https://<your-render-api>.onrender.com/api/whatsapp/webhook
+```
+
 ## Run with Docker
 
 The project runs as three containers:
