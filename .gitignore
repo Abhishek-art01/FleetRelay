@@ -1,6 +1,7 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # compiled output
+a.md
 dist
 tmp
 out-tsc
@@ -15,6 +16,7 @@ node_modules
 .env
 .env.*
 !.env.example
+.env.production
 
 # IDEs and editors
 /.idea
