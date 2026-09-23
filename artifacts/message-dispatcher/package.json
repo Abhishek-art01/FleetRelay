@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/vehicle-message-dispatcher",
+  "name": "@workspace/message-dispatcher",
   "version": "0.0.0",
   "private": true,
   "type": "module",

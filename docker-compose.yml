@@ -2,11 +2,17 @@ services:
   api:
     image: fleetrelay-api
     container_name: fleetrelay-api
+    network_mode: bridge
+    extra_hosts:
+      - "graph.facebook.com:157.240.13.14"
     build:
       context: .
       dockerfile: docker/api.Dockerfile
     ports:
       - "${API_HOST_PORT:-3000}:3000"
+    dns:
+      - "168.63.129.16"
+      - "8.8.8.8"
     environment:
       PORT: "3000"
       DATABASE_URL:
@@ -28,6 +34,8 @@ services:
   mockup-sandbox:
     image: fleetrelay-mockup
     container_name: fleetrelay-mockup
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
@@ -46,13 +54,15 @@ services:
   web-app:
     image: fleetrelay-web
     container_name: fleetrelay-web
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
       args:
-        APP_DIR: artifacts/vehicle-message-dispatcher
-        APP_DIR_NAME: vehicle-message-dispatcher
-        APP_NAME: "@workspace/vehicle-message-dispatcher"
+        APP_DIR: artifacts/message-dispatcher
+        APP_DIR_NAME: message-dispatcher
+        APP_NAME: "@workspace/message-dispatcher"
         PORT: "5174"
         BASE_PATH: "/"
         VITE_SUPABASE_URL: ${SUPABASE_URL:-}

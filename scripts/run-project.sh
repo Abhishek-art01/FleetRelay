@@ -41,4 +41,23 @@ DOTENV_PRIVATE_KEY="$(
     jq -er '.notes'
 )"
 
-exec dotenvx run -f .env --no-armor --no-native --no-1password --no-bitwarden -- docker compose up --build "$@"
+dotenv_value() {
+  dotenvx get "$1" -f .env --no-armor --no-native --no-1password --no-bitwarden
+}
+
+for variable in \
+  PORT BASE_PATH DATABASE_URL PGHOST PGPORT PGDATABASE PGUSER PGPASSWORD \
+  SUPABASE_URL SUPABASE_PUBLISHABLE_KEY SUPABASE_SECRET_KEY SUPABASE_JWKS_URL \
+  VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY \
+  WHATSAPP_PHONE_NUMBER_ID WHATSAPP_ACCESS_TOKEN WHATSAPP_APP_SECRET \
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN
+do
+  value="$(dotenv_value "$variable")"
+  if [[ -z "$value" || "$value" == encrypted:* ]]; then
+    echo "Could not decrypt $variable from .env." >&2
+    exit 1
+  fi
+  export "$variable=$value"
+done
+
+exec docker compose up --build "$@"
