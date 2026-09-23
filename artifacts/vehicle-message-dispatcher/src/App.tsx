@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { AlertCircle, ArrowUpRight, Bell, Check, CheckCircle2, ChevronDown, ClipboardCheck, CloudUpload, FileSpreadsheet, Filter, Info, LayoutDashboard, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Pencil, RefreshCw, Search, Send, Settings2, Sparkles, Upload, Users, X, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, Bell, Check, CheckCircle2, ChevronDown, ClipboardCheck, CloudUpload, Download, FileSpreadsheet, Filter, Info, LayoutDashboard, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Pencil, RefreshCw, Search, Send, Sparkles, Upload, Users, X, XCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import NotFound from '@/pages/not-found';
@@ -125,6 +125,16 @@ function AppShell() {
     return template
       .replaceAll('{{DriverName}}', record.driver)
       .replaceAll('{{Pending Duty Count}}', String(record.duties));
+  }
+
+  function downloadTemplate() {
+    const worksheet = XLSX.utils.json_to_sheet([], {
+      header: ['Vehicle Number', 'Driver Name', 'Mobile Number', 'Pending Duty Count'],
+    });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Duty Sheet');
+    XLSX.writeFile(workbook, 'fleetrelay-duty-sheet-template.xlsx');
+    setActivity('Blank duty sheet template downloaded.');
   }
 
   function applyTemplate() {
@@ -249,7 +259,6 @@ function AppShell() {
           <nav className="space-y-1">
             <button data-testid="button-nav-dispatch" title="Duty dispatch" className={`flex w-full items-center gap-3 rounded-xl bg-sidebar-accent py-3 text-sm font-semibold text-sidebar-accent-foreground ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}`}><LayoutDashboard size={17} /> {!sidebarCollapsed && <>Duty dispatch <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 font-mono-app text-[10px] font-medium text-secondary-foreground">{counts.all}</span></>}</button>
             <button data-testid="button-nav-drivers" title="Driver directory" onClick={() => setActivity('Driver directory is available through today’s imported duty sheet.')} className={`flex w-full items-center gap-3 rounded-xl py-3 text-sm text-sidebar-foreground/65 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}`}><Users size={17} /> {!sidebarCollapsed && 'Driver directory'}</button>
-            <button data-testid="button-nav-settings" title="WhatsApp connection is configured on the server" onClick={() => setActivity('WhatsApp connection is configured securely on the server.')} className={`flex w-full items-center gap-3 rounded-xl py-3 text-sm text-sidebar-foreground/65 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}`}><Settings2 size={17} /> {!sidebarCollapsed && 'Connection status'}</button>
           </nav>
         </div>
       </aside>
@@ -275,6 +284,7 @@ function AppShell() {
               <h1 className="font-display text-4xl font-bold tracking-[-.045em] text-primary sm:text-5xl">Duty dispatch</h1>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              <button data-testid="button-download-template" onClick={downloadTemplate} className="hidden items-center justify-center gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-xs font-bold text-foreground transition hover:bg-muted sm:inline-flex"><Download size={15} /> Download template</button>
               <button data-testid="button-upload-sheet" onClick={() => fileInputRef.current?.click()} className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:bg-primary/90"><Upload size={16} /> Import duty sheet <ArrowUpRight size={15} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></button>
             </div>
             <input ref={fileInputRef} data-testid="input-duty-sheet" onChange={handleUpload} className="hidden" type="file" accept=".xlsx,.xls,.csv" />
@@ -301,7 +311,7 @@ function AppShell() {
                   <label className="flex items-center gap-3 font-semibold"><input data-testid="checkbox-select-visible" type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} className="h-4 w-4 accent-[#18363a]" /> Select visible <span className="font-normal text-muted-foreground">({selected.length} total)</span></label>
                   <div className="flex items-center gap-3"><span data-testid="text-file-name" className="hidden items-center gap-1.5 font-mono-app text-[10px] text-muted-foreground sm:flex"><FileSpreadsheet size={14} /> {fileName}</span>{records.length > 0 && <button data-testid="button-clear-sheet" onClick={() => { setRecords([]); setSelected([]); setFileName('No file loaded'); setActivity('Queue cleared. Import a duty sheet to begin.'); }} className="text-[10px] font-bold text-muted-foreground underline decoration-border underline-offset-4 hover:text-destructive">Clear sheet</button>}</div>
                 </div>
-                {records.length === 0 ? <EmptyWorkspace onUpload={() => fileInputRef.current?.click()} /> : filteredRecords.length ? <div className="divide-y divide-border/70">
+                {records.length === 0 ? <EmptyWorkspace onDownload={downloadTemplate} onUpload={() => fileInputRef.current?.click()} /> : filteredRecords.length ? <div className="divide-y divide-border/70">
                   {filteredRecords.map((record, index) => <RecordRow key={record.id} record={record} selected={selected.includes(record.id)} index={index} onToggle={() => toggleSelected(record.id)} onUpdate={updateRecord} />)}
                 </div> : <EmptySearch query={query} onClear={() => { setQuery(''); setFilter('all'); }} />}
               </div>
@@ -364,8 +374,8 @@ function EmptySearch({ query, onClear }: { query: string; onClear: () => void })
   return <div className="flex min-h-[255px] flex-col items-center justify-center px-6 text-center"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-muted text-muted-foreground"><Search size={20} /></div><h3 className="mt-4 font-display text-lg font-bold">No drivers match this view</h3><p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">{query ? `Nothing matched “${query}”. Try another name or vehicle number.` : 'There are no records in this status yet.'}</p><button data-testid="button-clear-filters" onClick={onClear} className="mt-4 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground">Clear filters</button></div>;
 }
 
-function EmptyWorkspace({ onUpload }: { onUpload: () => void }) {
-  return <div data-testid="empty-workspace" className="flex min-h-[310px] flex-col items-center justify-center px-6 text-center"><div className="relative grid h-14 w-14 place-items-center rounded-2xl bg-[#fff0bc] text-primary"><FileSpreadsheet size={24} /><span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[#dff1ed] text-[#246b5e]"><CloudUpload size={12} /></span></div><h3 className="mt-5 font-display text-xl font-bold">Your duty sheet starts here</h3><p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">Upload the Excel or CSV export containing vehicle number, driver name, mobile number, and pending duty count.</p><button data-testid="button-empty-upload" onClick={onUpload} className="mt-5 inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-bold transition hover:bg-muted"><Upload size={14} /> Choose a file</button><p className="mt-4 font-mono-app text-[10px] text-muted-foreground">.xlsx · .xls · .csv</p></div>;
+function EmptyWorkspace({ onDownload, onUpload }: { onDownload: () => void; onUpload: () => void }) {
+  return <div data-testid="empty-workspace" className="flex min-h-[310px] flex-col items-center justify-center px-6 text-center"><div className="relative grid h-14 w-14 place-items-center rounded-2xl bg-[#fff0bc] text-primary"><FileSpreadsheet size={24} /><span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[#dff1ed] text-[#246b5e]"><CloudUpload size={12} /></span></div><h3 className="mt-5 font-display text-xl font-bold">Your duty sheet starts here</h3><p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">Upload the Excel or CSV export containing vehicle number, driver name, mobile number, and pending duty count.</p><div className="mt-5 flex flex-wrap justify-center gap-2"><button data-testid="button-empty-download-template" onClick={onDownload} className="inline-flex items-center gap-2 rounded-xl bg-secondary px-3.5 py-2.5 text-xs font-bold text-secondary-foreground transition hover:-translate-y-0.5"><Download size={14} /> Download template</button><button data-testid="button-empty-upload" onClick={onUpload} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-bold transition hover:bg-muted"><Upload size={14} /> Choose a file</button></div><p className="mt-4 font-mono-app text-[10px] text-muted-foreground">.xlsx · .xls · .csv</p></div>;
 }
 
 function Router() {
